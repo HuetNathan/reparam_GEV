@@ -1,0 +1,501 @@
+```{r}
+rm(list=ls())
+library(ggplot2)
+library(latex2exp)
+
+source("C:\\Users\\Nathan Huet\\github_repos\\reparametrisation_GEV\\reparametrisation_functions.R")
+```
+
+```{r}
+safe_cor <- function(H) {
+  
+  # function to obtain the correlation matrix by inverting the Hessian matrix
+  
+  if (any(!is.finite(H))) {
+    
+    return(matrix(c(1, NaN, NaN, 1), 2, 2))
+  }
+
+  ev <- eigen(H, symmetric = TRUE, only.values = TRUE)$values
+
+  if (any(ev <= 0) || min(ev) < 1e-8) {
+    
+    return(matrix(c(1, NaN, NaN, 1), 2, 2))
+  }
+
+  cov2cor(solve(H))
+}
+
+```
+
+GPD
+
+```{r}
+
+set.seed(42)
+
+d <- 1000
+
+n_list <- c(50,100)
+  
+sig0 <- 1
+xi0 <- 0.2
+
+cross_corr_list_classic_gpd_pos_xi <- list()
+cross_corr_list_fixed_xi_gpd_pos_xi <- list()
+cross_corr_list_fixed_sig_gpd_pos_xi <- list()
+
+correlation_list_classic_gpd_pos_xi <- list()
+correlation_list_fixed_xi_gpd_pos_xi <- list()
+correlation_list_fixed_sig_gpd_pos_xi <- list()
+
+
+for (n in n_list){
+  
+  samples <- replicate(d,mev::rgp(n, loc = 0, scale = sig0, shape = xi0))
+  samples_data <- as.data.frame(samples)
+
+  init <- fit.gpd(unlist(samples_data),method = "obre")$estimate
+  
+  fit_classic_gpd <- lapply(1:d, function(i) {
+      optim(par = init, fn = GPD_nll, x = samples_data[[i]],hessian=T)
+    })
+  
+  cov_fit_classic_gpd <- lapply(1:d, function(i) {safe_cor(fit_classic_gpd[[i]]$hessian)
+    })
+  
+  cross_corr_classic_gpd <- lapply(1:d, function(i) {cov_fit_classic_gpd[[i]][1,2]
+    })
+
+  fit_reparam_fixed_xi_gpd <- lapply(1:d, function(i) {
+      optim(par = c(init[1]*(1+init[2]),init[2]), fn = GPD_nll_fixed_xi, x = samples_data[[i]],hessian=T)
+    })
+  
+  cov_fit_reparam_fixed_xi_gpd <- lapply(1:d, function(i) {safe_cor(fit_reparam_fixed_xi_gpd[[i]]$hessian)
+    })
+  
+  cross_corr_reparam_fixed_xi_gpd <- lapply(1:d, function(i) {cov_fit_reparam_fixed_xi_gpd[[i]][1,2]
+    })
+
+  fit_reparam_fixed_sig_gpd <- lapply(1:d, function(i) {
+      optim(par = c(init[1],init[2]+log(init[1])/2), fn = GPD_nll_fixed_sig, x = samples_data[[i]],hessian=T)
+    })
+  
+  cov_fit_reparam_fixed_sig_gpd <- lapply(1:d, function(i) {safe_cor(fit_reparam_fixed_sig_gpd[[i]]$hessian)
+    })
+  
+  cross_corr_reparam_fixed_sig_gpd <- lapply(1:d, function(i) {cov_fit_reparam_fixed_sig_gpd[[i]][1,2]
+    })
+
+  estimates_classic_gpd <- lapply(1:d, function(i) fit_classic_gpd[[i]]$par)
+  estimates_classic_gpd <- do.call(cbind, estimates_classic_gpd)
+
+  estimates_reparam_fixed_xi_gpd <- lapply(1:d, function(i) fit_reparam_fixed_xi_gpd[[i]]$par)
+  estimates_reparam_fixed_xi_gpd <- do.call(cbind, estimates_reparam_fixed_xi_gpd)
+
+  estimates_reparam_fixed_sig_gpd <- lapply(1:d, function(i) fit_reparam_fixed_sig_gpd[[i]]$par)
+  estimates_reparam_fixed_sig_gpd <- do.call(cbind, estimates_reparam_fixed_sig_gpd)
+  
+  correlation_list_classic_gpd_pos_xi <- rbind(correlation_list_classic_gpd_pos_xi, cor(t(estimates_classic_gpd))[1,2])
+  
+  correlation_list_fixed_xi_gpd_pos_xi <- rbind(correlation_list_fixed_xi_gpd_pos_xi, cor(t(estimates_reparam_fixed_xi_gpd))[1,2])
+  
+  correlation_list_fixed_sig_gpd_pos_xi <- rbind(correlation_list_fixed_sig_gpd_pos_xi , cor(t(estimates_reparam_fixed_sig_gpd))[1,2])
+
+  cross_corr_list_classic_gpd_pos_xi <- rbind(cross_corr_list_classic_gpd_pos_xi,unlist(cross_corr_classic_gpd))
+  
+  cross_corr_list_fixed_xi_gpd_pos_xi <- rbind(cross_corr_list_fixed_xi_gpd_pos_xi,unlist(cross_corr_reparam_fixed_xi_gpd))
+  
+  cross_corr_list_fixed_sig_gpd_pos_xi <- rbind(cross_corr_list_fixed_sig_gpd_pos_xi,unlist(cross_corr_reparam_fixed_sig_gpd))
+}
+
+```
+
+Violin plots
+
+n = 50
+
+```{r}
+cross_cor_classic_gpd_pos_xi_n50 <- unlist(cross_corr_list_classic_gpd_pos_xi[1,])
+
+cross_cor_fixed_xi_gpd_pos_xi_n50 <- unlist(cross_corr_list_fixed_xi_gpd_pos_xi[1,])
+
+cross_cor_fixed_sig_gpd_pos_xi_n50 <- unlist(cross_corr_list_fixed_sig_gpd_pos_xi[1,])
+
+df_plot <- data.frame(
+  value = c(cross_cor_classic_gpd_pos_xi_n50, cross_cor_fixed_xi_gpd_pos_xi_n50, cross_cor_fixed_sig_gpd_pos_xi_n50),
+  group = factor(rep(c("classic", "fixed_xi", "fixed_sig"),
+                     each = length(cross_cor_classic_gpd_pos_xi_n50)))
+)
+
+df_plot$group <- factor(df_plot$group,
+                        levels = c("classic", "fixed_xi", "fixed_sig"))
+
+ggplot(df_plot, aes(x = group, y = value, fill = group,width = 1)) +
+  geom_violin(trim = FALSE, alpha = 0.9,linewidth = 1,width = 1) +
+  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white",linewidth = 0.5)+ 
+  scale_x_discrete(labels = c("classic" = TeX("$(\\sigma,\\xi)$"),
+                              "fixed_xi" = TeX("$(\\tilde{\\sigma}(\\rho,\\xi),\\xi)$"),
+                              "fixed_sig" = TeX("$(\\sigma,\\tilde{\\xi} (\\sigma,\\zeta))$")))+
+  scale_fill_manual(values=c("indianred1", "#4574eb", "#62fa6b")) +
+  theme_minimal() +
+  labs(x = "Parametrisation", y = "Cross-correlation") +
+  theme(legend.position = "none",
+    legend.title=element_text(size=26,face="bold"),
+    legend.text =element_text(size=24))+
+  theme(
+    axis.title = element_text(size = 18),   
+    axis.text = element_text(size = 14)
+  )
+
+correlation_list_classic_gpd_pos_xi[1]
+correlation_list_fixed_xi_gpd_pos_xi[1]
+correlation_list_fixed_sig_gpd_pos_xi[1]
+```
+
+n = 100
+
+```{r}
+cross_cor_classic_gpd_pos_xi_n100 <- unlist(cross_corr_list_classic_gpd_pos_xi[2,])
+
+cross_cor_fixed_xi_gpd_pos_xi_n100 <- unlist(cross_corr_list_fixed_xi_gpd_pos_xi[2,])
+
+cross_cor_fixed_sig_gpd_pos_xi_n100 <- unlist(cross_corr_list_fixed_sig_gpd_pos_xi[2,])
+
+df_plot <- data.frame(
+  value = c(cross_cor_classic_gpd_pos_xi_n100, cross_cor_fixed_xi_gpd_pos_xi_n100, cross_cor_fixed_sig_gpd_pos_xi_n100),
+  group = factor(rep(c("classic", "fixed_xi", "fixed_sig"),
+                     each = length(cross_cor_classic_gpd_pos_xi_n100)))
+)
+
+df_plot$group <- factor(df_plot$group,
+                        levels = c("classic", "fixed_xi", "fixed_sig"))
+
+ggplot(df_plot, aes(x = group, y = value, fill = group,width = 1)) +
+  geom_violin(trim = FALSE, alpha = 0.9,linewidth = 1,width = 1) +
+  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white",linewidth = 0.5)+ 
+  scale_x_discrete(labels = c("classic" = TeX("$(\\sigma,\\xi)$"),
+                              "fixed_xi" = TeX("$(\\tilde{\\sigma}(\\rho,\\xi),\\xi)$"),
+                              "fixed_sig" = TeX("$(\\sigma,\\tilde{\\xi} (\\sigma,\\zeta))$")))+
+  scale_fill_manual(values=c("indianred1", "#4574eb", "#62fa6b")) +
+  theme_minimal() +
+  labs(x = "Parametrisation", y = "Cross-correlation") +
+  theme(legend.position = "none",
+    legend.title=element_text(size=26,face="bold"),
+    legend.text =element_text(size=24))+
+  theme(
+    axis.title = element_text(size = 18),   
+    axis.text = element_text(size = 14)
+  )
+
+correlation_list_classic_gpd_pos_xi[2]
+correlation_list_fixed_xi_gpd_pos_xi[2]
+correlation_list_fixed_sig_gpd_pos_xi[2]
+```
+
+GEV
+
+```{r}
+
+set.seed(42)
+
+d <- 1000
+
+n_list <- c(50,100)
+  
+sig0 <- 1
+xi0 <- 0.2
+mu0 <- sig0/xi0
+
+cross_corr_list_classic_gev_pos_xi <- list()
+cross_corr_list_fixed_xi_gev_pos_xi <- list()
+
+correlation_list_classic_gev_pos_xi <- list()
+correlation_list_fixed_xi_gev_pos_xi <- list()
+
+for (n in n_list){
+  samples <- replicate(d,mev::rgev(n, loc = mu0, scale = sig0, shape = xi0))
+  samples_data <- as.data.frame(samples)
+
+  fit_pwme <- EnvStats::egevd(unlist(samples_data),method = "pwme")
+  
+  init <- c(fit_pwme$parameters[2],-fit_pwme$parameters[3])
+    
+  fit_classic_gev <- lapply(1:d, function(i) {
+      optim(par = init, fn = GEV_nll_known_mu, x = samples_data[[i]],hessian=T)
+    })
+  
+  cov_fit_classic_gev <- lapply(1:d, function(i) {safe_cor(fit_classic_gev[[i]]$hessian)
+    })
+  
+  cross_corr_classic_gev <- lapply(1:d, function(i) {cov_fit_classic_gev[[i]][1,2]
+    })
+
+  fit_reparam_fixed_xi_gev <- lapply(1:d, function(i) {
+      optim(par = c(init[1]/(init[2]*exp((1+digamma(1))*init[2])),init[2]), fn = GEV_nll_known_mu_fixed_xi, x = samples_data[[i]],hessian=T)
+    })
+  
+  cov_fit_reparam_fixed_xi_gev <- lapply(1:d, function(i) {safe_cor(fit_reparam_fixed_xi_gev[[i]]$hessian)
+    })
+  
+  cross_corr_reparam_fixed_xi_gev <- lapply(1:d, function(i) {cov_fit_reparam_fixed_xi_gev[[i]][1,2]
+    })
+
+  estimates_classic_gev <- lapply(1:d, function(i) fit_classic_gev[[i]]$par)
+  estimates_classic_gev <- do.call(cbind, estimates_classic_gev)
+
+  estimates_reparam_fixed_xi_gev <- lapply(1:d, function(i) fit_reparam_fixed_xi_gev[[i]]$par)
+  estimates_reparam_fixed_xi_gev <- do.call(cbind, estimates_reparam_fixed_xi_gev)
+
+  correlation_list_classic_gev_pos_xi <- rbind(correlation_list_classic_gev_pos_xi, cor(t(estimates_classic_gev))[1,2])
+  
+  correlation_list_fixed_xi_gev_pos_xi <- rbind(correlation_list_fixed_xi_gev_pos_xi, cor(t(estimates_reparam_fixed_xi_gev))[1,2])
+
+  cross_corr_list_classic_gev_pos_xi <- rbind(cross_corr_list_classic_gev_pos_xi,unlist(cross_corr_classic_gev))
+  
+  cross_corr_list_fixed_xi_gev_pos_xi <- rbind(cross_corr_list_fixed_xi_gev_pos_xi,unlist(cross_corr_reparam_fixed_xi_gev))
+}
+
+```
+
+Violin plots
+
+n = 50
+
+```{r}
+cross_cor_classic_gev_pos_xi_n50 <- unlist(cross_corr_list_classic_gev_pos_xi[1,])
+
+cross_cor_fixed_xi_gev_pos_xi_n50 <- unlist(cross_corr_list_fixed_xi_gev_pos_xi[1,])
+
+df_plot <- data.frame(
+  value = c(cross_cor_classic_gev_pos_xi_n50, cross_cor_fixed_xi_gev_pos_xi_n50),
+  group = factor(rep(c("classic", "fixed_xi"),
+                     each = length(cross_cor_classic_gev_pos_xi_n50)))
+)
+
+
+
+df_plot$group <- factor(df_plot$group,
+                        levels = c("classic", "fixed_xi"))
+
+ggplot(df_plot, aes(x = group, y = value, fill = group,width = 1)) +
+  geom_violin(trim = FALSE, alpha = 0.9,linewidth = 1,width = 1) +
+  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white",linewidth = 0.5)+ 
+  scale_x_discrete(labels = c("classic" = TeX("$(\\sigma,\\xi)$"),
+                              "fixed_xi" = TeX("$(\\tilde{\\sigma}(\\rho,\\xi),\\xi)$")))+
+  scale_fill_manual(values=c("indianred1", "#4574eb")) +
+  theme_minimal() +
+  labs(x = "Parametrisation", y = "Cross-correlation") +
+  theme(legend.position = "none",
+    legend.title=element_text(size=26,face="bold"),
+    legend.text =element_text(size=24))+
+  theme(
+    axis.title = element_text(size = 18),   
+    axis.text = element_text(size = 14)
+  )
+
+correlation_list_classic_gev_pos_xi[1]
+correlation_list_fixed_xi_gev_pos_xi[1]
+```
+
+n = 100
+
+```{r}
+cross_cor_classic_gev_pos_xi_n100 <- unlist(cross_corr_list_classic_gev_pos_xi[2,])
+
+cross_cor_fixed_xi_gev_pos_xi_n100 <- unlist(cross_corr_list_fixed_xi_gev_pos_xi[2,])
+
+df_plot <- data.frame(
+  value = c(cross_cor_classic_gev_pos_xi_n100, cross_cor_fixed_xi_gev_pos_xi_n100),
+  group = factor(rep(c("classic", "fixed_xi"),
+                     each = length(cross_cor_classic_gev_pos_xi_n100)))
+)
+
+df_plot$group <- factor(df_plot$group,
+                        levels = c("classic", "fixed_xi"))
+
+ggplot(df_plot, aes(x = group, y = value, fill = group,width = 1)) +
+  geom_violin(trim = FALSE, alpha = 0.9,linewidth = 1,width = 1) +
+  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white",linewidth = 0.5)+ 
+  scale_x_discrete(labels = c("classic" = TeX("$(\\sigma,\\xi)$"),
+                              "fixed_xi" = TeX("$(\\tilde{\\sigma}(\\rho,\\xi),\\xi)$")))+
+  scale_fill_manual(values=c("indianred1", "#4574eb")) +
+  theme_minimal() +
+  labs(x = "Parametrisation", y = "Cross-correlation") +
+  theme(legend.position = "none",
+    legend.title=element_text(size=26,face="bold"),
+    legend.text =element_text(size=24))+
+  theme(
+    axis.title = element_text(size = 18),   
+    axis.text = element_text(size = 14)
+  )
+
+correlation_list_classic_gev_pos_xi[2]
+correlation_list_fixed_xi_gev_pos_xi[2]
+```
+
+Gumbel
+
+```{r}
+
+set.seed(42)
+
+d <- 1000
+
+n_list <- c(50,100)
+ 
+mu0 <- 1
+sig0 <- 1
+
+cross_corr_list_classic_gumbel <- list()
+cross_corr_list_fixed_mu_gumbel <- list()
+cross_corr_list_fixed_sig_gumbel <- list()
+
+correlation_list_classic_gumbel <- list()
+correlation_list_fixed_mu_gumbel <- list()
+correlation_list_fixed_sig_gumbel <- list()
+
+for (n in n_list){
+  samples <- replicate(d,mev::rgev(n, loc = mu0, scale = sig0, shape = 0))
+  samples_data <- as.data.frame(samples)
+
+  fit_pwme <- EnvStats::egevd(unlist(samples_data),method = "pwme")
+  
+  init <- c(fit_pwme$parameters[1],fit_pwme$parameters[2])
+    
+  fit_classic_gumbel <- lapply(1:d, function(i) {
+      optim(par = init, fn = Gumbel_nll, x = samples_data[[i]],hessian=T)
+    })
+  
+  cov_fit_classic_gumbel <- lapply(1:d, function(i) {safe_cor(fit_classic_gumbel[[i]]$hessian)
+    })
+  
+  cross_corr_classic_gumbel <- lapply(1:d, function(i) {cov_fit_classic_gumbel[[i]][1,2]
+    })
+  
+  gamma<- -digamma(1)
+  
+  K <- (1-gamma)/(pi^2/6+gamma^2-2*gamma+1)
+  
+  fit_reparam_fixed_mu_gumbel <- lapply(1:d, function(i) {
+      optim(par = c(init[1],init[2]-K*init[1]), fn = Gumbel_nll_fixed_mu, x = samples_data[[i]],hessian=T)
+    })
+  
+  cov_fit_reparam_fixed_mu_gumbel <- lapply(1:d, function(i) {safe_cor(fit_reparam_fixed_mu_gumbel[[i]]$hessian)
+    })
+  
+  cross_corr_reparam_fixed_mu_gumbel <- lapply(1:d, function(i) {cov_fit_reparam_fixed_mu_gumbel[[i]][1,2]
+    })
+
+  fit_reparam_fixed_sig_gumbel <- lapply(1:d, function(i) {
+      optim(par = c(init[1]-(1-gamma)*init[2],init[2]), fn = Gumbel_nll_fixed_sig, x = samples_data[[i]],hessian=T)
+    })
+  
+  cov_fit_reparam_fixed_sig_gumbel <- lapply(1:d, function(i) {safe_cor(fit_reparam_fixed_sig_gumbel[[i]]$hessian)
+    })
+  
+  cross_corr_reparam_fixed_sig_gumbel <- lapply(1:d, function(i) {cov_fit_reparam_fixed_sig_gumbel[[i]][1,2]
+    })
+
+  estimates_classic_gumbel <- lapply(1:d, function(i) fit_classic_gumbel[[i]]$par)
+  estimates_classic_gumbel <- do.call(cbind, estimates_classic_gumbel)
+
+  estimates_reparam_fixed_mu_gumbel <- lapply(1:d, function(i) fit_reparam_fixed_mu_gumbel[[i]]$par)
+  estimates_reparam_fixed_mu_gumbel <- do.call(cbind, estimates_reparam_fixed_mu_gumbel)
+
+  estimates_reparam_fixed_sig_gumbel <- lapply(1:d, function(i) fit_reparam_fixed_sig_gumbel[[i]]$par)
+  estimates_reparam_fixed_sig_gumbel <- do.call(cbind, estimates_reparam_fixed_sig_gumbel)
+  
+  correlation_list_classic_gumbel <- rbind(correlation_list_classic_gumbel, cor(t(estimates_classic_gumbel))[1,2])
+  
+  correlation_list_fixed_mu_gumbel <- rbind(correlation_list_fixed_mu_gumbel, cor(t(estimates_reparam_fixed_mu_gumbel))[1,2])
+  
+  correlation_list_fixed_sig_gumbel <- rbind(correlation_list_fixed_sig_gumbel , cor(t(estimates_reparam_fixed_sig_gumbel))[1,2])
+
+  cross_corr_list_classic_gumbel <- rbind(cross_corr_list_classic_gumbel,unlist(cross_corr_classic_gumbel))
+  
+  cross_corr_list_fixed_mu_gumbel <- rbind(cross_corr_list_fixed_mu_gumbel,unlist(cross_corr_reparam_fixed_mu_gumbel))
+  
+  cross_corr_list_fixed_sig_gumbel <- rbind(cross_corr_list_fixed_sig_gumbel,unlist(cross_corr_reparam_fixed_sig_gumbel))
+}
+
+```
+
+Violin plots
+
+n = 50
+
+```{r}
+cross_cor_classic_gumbel_n50 <- unlist(cross_corr_list_classic_gumbel[1,])
+
+cross_cor_fixed_mu_gumbel_n50 <- unlist(cross_corr_list_fixed_mu_gumbel[1,])
+
+cross_cor_fixed_sig_gumbel_n50 <- unlist(cross_corr_list_fixed_sig_gumbel[1,])
+
+df_plot <- data.frame(
+  value = c(cross_cor_classic_gumbel_n50, cross_cor_fixed_mu_gumbel_n50, cross_cor_fixed_sig_gumbel_n50),
+  group = factor(rep(c("classic", "fixed_mu", "fixed_sig"),
+                     each = length(cross_cor_classic_gumbel_n50)))
+)
+
+df_plot$group <- factor(df_plot$group,
+                        levels = c("classic", "fixed_mu", "fixed_sig"))
+
+ggplot(df_plot, aes(x = group, y = value, fill = group,width = 1)) +
+  geom_violin(trim = FALSE, alpha = 0.9,linewidth = 1,width = 1) +
+  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white",linewidth = 0.5)+ 
+  scale_x_discrete(labels = c("classic" = TeX("$(\\sigma,\\xi)$"),
+                              "fixed_mu" = TeX("$(\\mu,\\tilde{\\sigma}(\\mu,\\rho))$"),
+                              "fixed_sig" = TeX("$(\\tilde{\\mu}(\\nu,\\sigma)),\\sigma)$")))+
+  scale_fill_manual(values=c("indianred1", "#4574eb", "#62fa6b")) +
+  theme_minimal() +
+  labs(x = "Parametrisation", y = "Cross-correlation") +
+  theme(legend.position = "none",
+    legend.title=element_text(size=26,face="bold"),
+    legend.text =element_text(size=24))+
+  theme(
+    axis.title = element_text(size = 18),   
+    axis.text = element_text(size = 14)
+  )
+
+correlation_list_classic_gumbel[1]
+correlation_list_fixed_mu_gumbel[1]
+correlation_list_fixed_sig_gumbel[1]
+```
+
+n = 100
+
+```{r}
+cross_cor_classic_gumbel_n100 <- unlist(cross_corr_list_classic_gumbel[2,])
+
+cross_cor_fixed_mu_gumbel_n100 <- unlist(cross_corr_list_fixed_mu_gumbel[2,])
+
+cross_cor_fixed_sig_gumbel_n100 <- unlist(cross_corr_list_fixed_sig_gumbel[2,])
+
+df_plot <- data.frame(
+  value = c(cross_cor_classic_gumbel_n100, cross_cor_fixed_mu_gumbel_n100, cross_cor_fixed_sig_gumbel_n100),
+  group = factor(rep(c("classic", "fixed_mu", "fixed_sig"),
+                     each = length(cross_cor_classic_gumbel_n100)))
+)
+
+ggplot(df_plot, aes(x = group, y = value, fill = group,width = 1)) +
+  geom_violin(trim = FALSE, alpha = 0.9,linewidth = 1,width = 1) +
+  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white",linewidth = 0.5)+ 
+  scale_x_discrete(labels = c("classic" = "Classic",
+                              "fixed_mu" = TeX("fixed $\\mu$"),
+                              "fixed_sig" = TeX("fixed $\\sigma$")))+
+  scale_fill_manual(values=c("indianred1", "#4574eb", "#62fa6b")) +
+  theme_minimal() +
+  labs(x = "Parametrisation", y = "Cross-correlation") +
+  theme(legend.position = "none",
+    legend.title=element_text(size=26,face="bold"),
+    legend.text =element_text(size=24))+
+  theme(
+    axis.title = element_text(size = 18),   
+    axis.text = element_text(size = 14)
+  )
+
+correlation_list_classic_gumbel[2]
+correlation_list_fixed_mu_gumbel[2]
+correlation_list_fixed_sig_gumbel[2]
+```
