@@ -2,6 +2,7 @@
 rm(list=ls())
 library(ggplot2)
 library(latex2exp)
+library(mev)
 
 source("C:\\Users\\Nathan Huet\\github_repos\\reparametrisation_GEV\\reparametrisation_functions.R")
 ```
@@ -481,9 +482,9 @@ df_plot <- data.frame(
 ggplot(df_plot, aes(x = group, y = value, fill = group,width = 1)) +
   geom_violin(trim = FALSE, alpha = 0.9,linewidth = 1,width = 1) +
   geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white",linewidth = 0.5)+ 
-  scale_x_discrete(labels = c("classic" = "Classic",
-                              "fixed_mu" = TeX("fixed $\\mu$"),
-                              "fixed_sig" = TeX("fixed $\\sigma$")))+
+  scale_x_discrete(labels = c("classic" = TeX("$(\\sigma,\\xi)$"),
+                              "fixed_mu" = TeX("$(\\mu,\\tilde{\\sigma}(\\mu,\\rho))$"),
+                              "fixed_sig" = TeX("$(\\tilde{\\mu}(\\nu,\\sigma)),\\sigma)$")))+
   scale_fill_manual(values=c("indianred1", "#4574eb", "#62fa6b")) +
   theme_minimal() +
   labs(x = "Parametrisation", y = "Cross-correlation") +

@@ -84,6 +84,8 @@ GEV_nll_known_mu_fixed_xi <- function(x,par) {
   
   if (xi < 0 & min(t) >= 0){l <- 10^6}
   
+  if (abs(xi) <= 10e-3){l <- 10^6}
+  
   else{l <- -sum(log(GEV_density_known_mu_fixed_xi(x,par)))}
   
   l
@@ -653,4 +655,47 @@ Fisher_xi_sig_GPD3  <- function(mu,sig,xi) {
   # (2,3)-component of the Fisher information matrix i_{\xi\sigma}
   
   return(1/(sig*(1+xi)*(1+2*xi)))
+}
+
+
+
+
+
+### Gamma distribution
+
+Gamma_density <- function(x,par) {
+  
+  # classic Gumbel density
+  
+  alpha <- par[1]
+  
+  theta <- par[2]
+  
+  return(x^(alpha-1)*exp(-x/theta)/(gamma(alpha)*theta^alpha))
+}
+
+Gamma_nll <- function(x,par) {
+  
+  # negative log-likelihood of the classic Gumbel distribution
+  
+  return(-sum(log(Gamma_density(x,par))))
+}
+
+Gamma_density_fixed_alpha <- function(x,par) {
+  
+  # reparametrised, with fixed scale parameter, Gumbel density
+  
+  alpha <- par[1]
+  
+  omega <- par[2]
+  
+  return(x^(alpha-1)*alpha^alpha*exp(-x*alpha/omega)/(gamma(alpha)*omega^alpha))
+}
+
+
+Gamma_nll_fixed_alpha <- function(x,par) {
+  
+  # negative log-likelihood of the classic Gumbel distribution
+  
+  return(-sum(log(Gamma_density_fixed_alpha(x,par))))
 }
