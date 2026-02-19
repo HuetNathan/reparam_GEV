@@ -4,7 +4,7 @@ library(ggplot2)
 library(latex2exp)
 library(mev)
 
-source("C:\\Users\\Nathan Huet\\github_repos\\reparametrisation_GEV\\reparametrisation_functions.R")
+source("reparametrisation_functions.R")
 ```
 
 ```{r}
@@ -118,13 +118,13 @@ n = 50
 
 ```{r}
 cross_cor_classic_gpd_pos_xi_n50 <- unlist(cross_corr_list_classic_gpd_pos_xi[1,])
-
 cross_cor_fixed_xi_gpd_pos_xi_n50 <- unlist(cross_corr_list_fixed_xi_gpd_pos_xi[1,])
-
 cross_cor_fixed_sig_gpd_pos_xi_n50 <- unlist(cross_corr_list_fixed_sig_gpd_pos_xi[1,])
 
 df_plot <- data.frame(
-  value = c(cross_cor_classic_gpd_pos_xi_n50, cross_cor_fixed_xi_gpd_pos_xi_n50, cross_cor_fixed_sig_gpd_pos_xi_n50),
+  value = c(cross_cor_classic_gpd_pos_xi_n50,
+            cross_cor_fixed_xi_gpd_pos_xi_n50,
+            cross_cor_fixed_sig_gpd_pos_xi_n50),
   group = factor(rep(c("classic", "fixed_xi", "fixed_sig"),
                      each = length(cross_cor_classic_gpd_pos_xi_n50)))
 )
@@ -132,39 +132,47 @@ df_plot <- data.frame(
 df_plot$group <- factor(df_plot$group,
                         levels = c("classic", "fixed_xi", "fixed_sig"))
 
-ggplot(df_plot, aes(x = group, y = value, fill = group,width = 1)) +
-  geom_violin(trim = FALSE, alpha = 0.9,linewidth = 1,width = 1) +
-  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white",linewidth = 0.5)+ 
+df_corr <- data.frame(
+  group = factor(c("classic", "fixed_xi", "fixed_sig"),
+                 levels = c("classic", "fixed_xi", "fixed_sig")),
+  corr = c(as.numeric(correlation_list_classic_gpd_pos_xi[[1]]),
+           as.numeric(correlation_list_fixed_xi_gpd_pos_xi[[1]]),
+           as.numeric(correlation_list_fixed_sig_gpd_pos_xi[[1]]))
+)
+
+
+ggplot(df_plot, aes(x = group, y = value, fill = group)) +
+  geom_violin(trim = FALSE, alpha = 0.9, linewidth = 1, width = 1) +
+  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white", linewidth = 0.5) +
+  geom_text(data = df_corr,
+            aes(x = group, y = max(df_plot$value, na.rm = TRUE) + 0.15,
+                label = sprintf("Corr. = %.3f", corr)),
+            inherit.aes = FALSE,
+            size = 6) +
   scale_x_discrete(labels = c("classic" = TeX("$(\\sigma,\\xi)$"),
-                              "fixed_xi" = TeX("$(\\tilde{\\sigma}(\\rho,\\xi),\\xi)$"),
-                              "fixed_sig" = TeX("$(\\sigma,\\tilde{\\xi} (\\sigma,\\zeta))$")))+
+                              "fixed_xi" = TeX("$(\\tilde{\\sigma}(\\nu,\\xi),\\xi)$"),
+                              "fixed_sig" = TeX("$(\\sigma,\\tilde{\\xi}(\\sigma,\\zeta))$"))) +
   scale_fill_manual(values=c("indianred1", "#4574eb", "#62fa6b")) +
   theme_minimal() +
   labs(x = "Parametrisation", y = "Cross-correlation") +
-  theme(legend.position = "none",
-    legend.title=element_text(size=26,face="bold"),
-    legend.text =element_text(size=24))+
   theme(
-    axis.title = element_text(size = 18),   
+    legend.position = "none",
+    axis.title = element_text(size = 18),
     axis.text = element_text(size = 14)
   )
-
-correlation_list_classic_gpd_pos_xi[1]
-correlation_list_fixed_xi_gpd_pos_xi[1]
-correlation_list_fixed_sig_gpd_pos_xi[1]
 ```
 
 n = 100
 
 ```{r}
 cross_cor_classic_gpd_pos_xi_n100 <- unlist(cross_corr_list_classic_gpd_pos_xi[2,])
-
 cross_cor_fixed_xi_gpd_pos_xi_n100 <- unlist(cross_corr_list_fixed_xi_gpd_pos_xi[2,])
-
 cross_cor_fixed_sig_gpd_pos_xi_n100 <- unlist(cross_corr_list_fixed_sig_gpd_pos_xi[2,])
 
 df_plot <- data.frame(
-  value = c(cross_cor_classic_gpd_pos_xi_n100, cross_cor_fixed_xi_gpd_pos_xi_n100, cross_cor_fixed_sig_gpd_pos_xi_n100),
+  value = c(cross_cor_classic_gpd_pos_xi_n100,
+            cross_cor_fixed_xi_gpd_pos_xi_n100,
+            cross_cor_fixed_sig_gpd_pos_xi_n100),
   group = factor(rep(c("classic", "fixed_xi", "fixed_sig"),
                      each = length(cross_cor_classic_gpd_pos_xi_n100)))
 )
@@ -172,26 +180,35 @@ df_plot <- data.frame(
 df_plot$group <- factor(df_plot$group,
                         levels = c("classic", "fixed_xi", "fixed_sig"))
 
-ggplot(df_plot, aes(x = group, y = value, fill = group,width = 1)) +
-  geom_violin(trim = FALSE, alpha = 0.9,linewidth = 1,width = 1) +
-  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white",linewidth = 0.5)+ 
+df_corr <- data.frame(
+  group = factor(c("classic", "fixed_xi", "fixed_sig"),
+                 levels = c("classic", "fixed_xi", "fixed_sig")),
+  corr = c(as.numeric(correlation_list_classic_gpd_pos_xi[[2]]),
+           as.numeric(correlation_list_fixed_xi_gpd_pos_xi[[2]]),
+           as.numeric(correlation_list_fixed_sig_gpd_pos_xi[[2]]))
+)
+
+
+ggplot(df_plot, aes(x = group, y = value, fill = group)) +
+  geom_violin(trim = FALSE, alpha = 0.9, linewidth = 1, width = 1) +
+  geom_boxplot(width = 0.05, outlier.shape = NA,
+               fill ="white", linewidth = 0.5) +
+  geom_text(data = df_corr,
+            aes(x = group, y = max(df_plot$value, na.rm = TRUE) + 0.15,
+                label = sprintf("Corr. = %.3f", corr)),
+            inherit.aes = FALSE,
+            size = 6) +
   scale_x_discrete(labels = c("classic" = TeX("$(\\sigma,\\xi)$"),
-                              "fixed_xi" = TeX("$(\\tilde{\\sigma}(\\rho,\\xi),\\xi)$"),
-                              "fixed_sig" = TeX("$(\\sigma,\\tilde{\\xi} (\\sigma,\\zeta))$")))+
+                              "fixed_xi" = TeX("$(\\tilde{\\sigma}(\\nu,\\xi),\\xi)$"),
+                              "fixed_sig" = TeX("$(\\sigma,\\tilde{\\xi}(\\sigma,\\zeta))$"))) +
   scale_fill_manual(values=c("indianred1", "#4574eb", "#62fa6b")) +
   theme_minimal() +
   labs(x = "Parametrisation", y = "Cross-correlation") +
-  theme(legend.position = "none",
-    legend.title=element_text(size=26,face="bold"),
-    legend.text =element_text(size=24))+
   theme(
-    axis.title = element_text(size = 18),   
+    legend.position = "none",
+    axis.title = element_text(size = 18),
     axis.text = element_text(size = 14)
   )
-
-correlation_list_classic_gpd_pos_xi[2]
-correlation_list_fixed_xi_gpd_pos_xi[2]
-correlation_list_fixed_sig_gpd_pos_xi[2]
 ```
 
 GEV
@@ -265,49 +282,56 @@ n = 50
 
 ```{r}
 cross_cor_classic_gev_pos_xi_n50 <- unlist(cross_corr_list_classic_gev_pos_xi[1,])
-
 cross_cor_fixed_xi_gev_pos_xi_n50 <- unlist(cross_corr_list_fixed_xi_gev_pos_xi[1,])
 
 df_plot <- data.frame(
-  value = c(cross_cor_classic_gev_pos_xi_n50, cross_cor_fixed_xi_gev_pos_xi_n50),
+  value = c(cross_cor_classic_gev_pos_xi_n50,
+            cross_cor_fixed_xi_gev_pos_xi_n50),
   group = factor(rep(c("classic", "fixed_xi"),
                      each = length(cross_cor_classic_gev_pos_xi_n50)))
 )
 
-
-
 df_plot$group <- factor(df_plot$group,
                         levels = c("classic", "fixed_xi"))
 
-ggplot(df_plot, aes(x = group, y = value, fill = group,width = 1)) +
-  geom_violin(trim = FALSE, alpha = 0.9,linewidth = 1,width = 1) +
-  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white",linewidth = 0.5)+ 
+df_corr <- data.frame(
+  group = factor(c("classic", "fixed_xi"),
+                 levels = c("classic", "fixed_xi")),
+  corr = c(as.numeric(correlation_list_classic_gev_pos_xi[[1]]),
+           as.numeric(correlation_list_fixed_xi_gev_pos_xi[[1]]))
+)
+
+
+ggplot(df_plot, aes(x = group, y = value, fill = group)) +
+  geom_violin(trim = FALSE, alpha = 0.9, linewidth = 1, width = 1) +
+  geom_boxplot(width = 0.05, outlier.shape = NA,
+               fill ="white", linewidth = 0.5) +
+  geom_text(data = df_corr,
+            aes(x = group, y = max(df_plot$value, na.rm = TRUE) + 0.05,
+                label = sprintf("Corr = %.3f", corr)),
+            inherit.aes = FALSE,
+            size = 6) +
   scale_x_discrete(labels = c("classic" = TeX("$(\\sigma,\\xi)$"),
-                              "fixed_xi" = TeX("$(\\tilde{\\sigma}(\\rho,\\xi),\\xi)$")))+
+                              "fixed_xi" = TeX("$(\\tilde{\\sigma}(\\rho,\\xi),\\xi)$"))) +
   scale_fill_manual(values=c("indianred1", "#4574eb")) +
   theme_minimal() +
   labs(x = "Parametrisation", y = "Cross-correlation") +
-  theme(legend.position = "none",
-    legend.title=element_text(size=26,face="bold"),
-    legend.text =element_text(size=24))+
   theme(
-    axis.title = element_text(size = 18),   
+    legend.position = "none",
+    axis.title = element_text(size = 18),
     axis.text = element_text(size = 14)
   )
-
-correlation_list_classic_gev_pos_xi[1]
-correlation_list_fixed_xi_gev_pos_xi[1]
 ```
 
 n = 100
 
 ```{r}
 cross_cor_classic_gev_pos_xi_n100 <- unlist(cross_corr_list_classic_gev_pos_xi[2,])
-
 cross_cor_fixed_xi_gev_pos_xi_n100 <- unlist(cross_corr_list_fixed_xi_gev_pos_xi[2,])
 
 df_plot <- data.frame(
-  value = c(cross_cor_classic_gev_pos_xi_n100, cross_cor_fixed_xi_gev_pos_xi_n100),
+  value = c(cross_cor_classic_gev_pos_xi_n100,
+            cross_cor_fixed_xi_gev_pos_xi_n100),
   group = factor(rep(c("classic", "fixed_xi"),
                      each = length(cross_cor_classic_gev_pos_xi_n100)))
 )
@@ -315,24 +339,36 @@ df_plot <- data.frame(
 df_plot$group <- factor(df_plot$group,
                         levels = c("classic", "fixed_xi"))
 
-ggplot(df_plot, aes(x = group, y = value, fill = group,width = 1)) +
-  geom_violin(trim = FALSE, alpha = 0.9,linewidth = 1,width = 1) +
-  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white",linewidth = 0.5)+ 
+# correlations to display
+df_corr <- data.frame(
+  group = factor(c("classic", "fixed_xi"),
+                 levels = c("classic", "fixed_xi")),
+  corr = c(as.numeric(correlation_list_classic_gev_pos_xi[[2]]),
+           as.numeric(correlation_list_fixed_xi_gev_pos_xi[[2]]))
+)
+
+# y position for the text
+y_pos <- max(df_plot$value, na.rm = TRUE) + 0.05
+
+ggplot(df_plot, aes(x = group, y = value, fill = group)) +
+  geom_violin(trim = FALSE, alpha = 0.9, linewidth = 1, width = 1) +
+  geom_boxplot(width = 0.05, outlier.shape = NA,
+               fill = "white", linewidth = 0.5) +
+  geom_text(data = df_corr,
+            aes(x = group, y = y_pos,
+                label = sprintf("Corr. = %.3f", corr)),
+            inherit.aes = FALSE,
+            size = 6) +
   scale_x_discrete(labels = c("classic" = TeX("$(\\sigma,\\xi)$"),
-                              "fixed_xi" = TeX("$(\\tilde{\\sigma}(\\rho,\\xi),\\xi)$")))+
+                              "fixed_xi" = TeX("$(\\tilde{\\sigma}(\\rho,\\xi),\\xi)$"))) +
   scale_fill_manual(values=c("indianred1", "#4574eb")) +
   theme_minimal() +
   labs(x = "Parametrisation", y = "Cross-correlation") +
-  theme(legend.position = "none",
-    legend.title=element_text(size=26,face="bold"),
-    legend.text =element_text(size=24))+
   theme(
-    axis.title = element_text(size = 18),   
+    legend.position = "none",
+    axis.title = element_text(size = 18),
     axis.text = element_text(size = 14)
   )
-
-correlation_list_classic_gev_pos_xi[2]
-correlation_list_fixed_xi_gev_pos_xi[2]
 ```
 
 Gumbel
@@ -428,75 +464,82 @@ n = 50
 
 ```{r}
 cross_cor_classic_gumbel_n50 <- unlist(cross_corr_list_classic_gumbel[1,])
-
 cross_cor_fixed_mu_gumbel_n50 <- unlist(cross_corr_list_fixed_mu_gumbel[1,])
-
 cross_cor_fixed_sig_gumbel_n50 <- unlist(cross_corr_list_fixed_sig_gumbel[1,])
 
 df_plot <- data.frame(
-  value = c(cross_cor_classic_gumbel_n50, cross_cor_fixed_mu_gumbel_n50, cross_cor_fixed_sig_gumbel_n50),
+  value = c(cross_cor_classic_gumbel_n50,
+            cross_cor_fixed_mu_gumbel_n50,
+            cross_cor_fixed_sig_gumbel_n50),
   group = factor(rep(c("classic", "fixed_mu", "fixed_sig"),
                      each = length(cross_cor_classic_gumbel_n50)))
 )
 
-df_plot$group <- factor(df_plot$group,
-                        levels = c("classic", "fixed_mu", "fixed_sig"))
+df_corr <- data.frame(
+  group = factor(c("classic", "fixed_mu", "fixed_sig"),
+                 levels = c("classic", "fixed_mu", "fixed_sig")),
+  corr = c(as.numeric(correlation_list_classic_gumbel[[1]]),
+           as.numeric(correlation_list_fixed_mu_gumbel[[1]]),
+           as.numeric(correlation_list_fixed_sig_gumbel[[1]]))
+)
 
-ggplot(df_plot, aes(x = group, y = value, fill = group,width = 1)) +
-  geom_violin(trim = FALSE, alpha = 0.9,linewidth = 1,width = 1) +
-  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white",linewidth = 0.5)+ 
-  scale_x_discrete(labels = c("classic" = TeX("$(\\sigma,\\xi)$"),
+
+
+ggplot(df_plot, aes(x = group, y = value, fill = group)) +
+  geom_violin(trim = FALSE, alpha = 0.9, linewidth = 1, width = 1) +
+  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white", linewidth = 0.5) +
+  geom_text(data = df_corr,
+            aes(x = group, y = max(df_plot$value, na.rm = TRUE) + 0.05, label = sprintf("Corr. = %.3f", corr)),
+            inherit.aes = FALSE,
+            size = 6) +
+  scale_x_discrete(labels = c("classic" = TeX("$(\\mu,\\sigma)$"),
                               "fixed_mu" = TeX("$(\\mu,\\tilde{\\sigma}(\\mu,\\rho))$"),
-                              "fixed_sig" = TeX("$(\\tilde{\\mu}(\\nu,\\sigma)),\\sigma)$")))+
+                              "fixed_sig" = TeX("$(\\tilde{\\mu}(\\nu,\\sigma),\\sigma)$"))) +
   scale_fill_manual(values=c("indianred1", "#4574eb", "#62fa6b")) +
   theme_minimal() +
   labs(x = "Parametrisation", y = "Cross-correlation") +
   theme(legend.position = "none",
-    legend.title=element_text(size=26,face="bold"),
-    legend.text =element_text(size=24))+
-  theme(
-    axis.title = element_text(size = 18),   
-    axis.text = element_text(size = 14)
-  )
-
-correlation_list_classic_gumbel[1]
-correlation_list_fixed_mu_gumbel[1]
-correlation_list_fixed_sig_gumbel[1]
+        axis.title = element_text(size = 18),
+        axis.text = element_text(size = 14))
 ```
 
 n = 100
 
 ```{r}
 cross_cor_classic_gumbel_n100 <- unlist(cross_corr_list_classic_gumbel[2,])
-
 cross_cor_fixed_mu_gumbel_n100 <- unlist(cross_corr_list_fixed_mu_gumbel[2,])
-
 cross_cor_fixed_sig_gumbel_n100 <- unlist(cross_corr_list_fixed_sig_gumbel[2,])
 
 df_plot <- data.frame(
-  value = c(cross_cor_classic_gumbel_n100, cross_cor_fixed_mu_gumbel_n100, cross_cor_fixed_sig_gumbel_n100),
+  value = c(cross_cor_classic_gumbel_n100,
+            cross_cor_fixed_mu_gumbel_n100,
+            cross_cor_fixed_sig_gumbel_n100),
   group = factor(rep(c("classic", "fixed_mu", "fixed_sig"),
                      each = length(cross_cor_classic_gumbel_n100)))
 )
 
-ggplot(df_plot, aes(x = group, y = value, fill = group,width = 1)) +
-  geom_violin(trim = FALSE, alpha = 0.9,linewidth = 1,width = 1) +
-  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white",linewidth = 0.5)+ 
-  scale_x_discrete(labels = c("classic" = TeX("$(\\sigma,\\xi)$"),
+df_corr <- data.frame(
+  group = factor(c("classic", "fixed_mu", "fixed_sig"),
+                 levels = c("classic", "fixed_mu", "fixed_sig")),
+  corr = c(as.numeric(correlation_list_classic_gumbel[[2]]),
+           as.numeric(correlation_list_fixed_mu_gumbel[[2]]),
+           as.numeric(correlation_list_fixed_sig_gumbel[[2]]))
+)
+
+ggplot(df_plot, aes(x = group, y = value, fill = group)) +
+  geom_violin(trim = FALSE, alpha = 0.9, linewidth = 1, width = 1) +
+  geom_boxplot(width = 0.05, outlier.shape = NA, fill ="white", linewidth = 0.5) +
+  geom_text(data = df_corr,
+            aes(x = group, y = max(df_plot$value, na.rm = TRUE) + 0.05, label = sprintf("Corr. = %.3f", corr)),
+            inherit.aes = FALSE,
+            size = 6) +
+  scale_x_discrete(labels = c("classic" = TeX("$(\\mu,\\sigma)$"),
                               "fixed_mu" = TeX("$(\\mu,\\tilde{\\sigma}(\\mu,\\rho))$"),
-                              "fixed_sig" = TeX("$(\\tilde{\\mu}(\\nu,\\sigma)),\\sigma)$")))+
+                              "fixed_sig" = TeX("$(\\tilde{\\mu}(\\nu,\\sigma),\\sigma)$"))) +
   scale_fill_manual(values=c("indianred1", "#4574eb", "#62fa6b")) +
   theme_minimal() +
   labs(x = "Parametrisation", y = "Cross-correlation") +
   theme(legend.position = "none",
-    legend.title=element_text(size=26,face="bold"),
-    legend.text =element_text(size=24))+
-  theme(
-    axis.title = element_text(size = 18),   
-    axis.text = element_text(size = 14)
-  )
-
-correlation_list_classic_gumbel[2]
-correlation_list_fixed_mu_gumbel[2]
-correlation_list_fixed_sig_gumbel[2]
+        axis.title = element_text(size = 18),
+        axis.text = element_text(size = 14))
 ```
