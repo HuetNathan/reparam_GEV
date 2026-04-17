@@ -9,13 +9,13 @@ GEV_density_known_mu <- function(x,par) {
   
   xi <- par[2]
   
-  if (abs(xi) <= 10e-3){return("xi must be non null")}
+  if (abs(xi) <= 1e-3){return("xi must be non null")}
   
   else{
     
-    t <- (xi*x/sig)
+  t <- (xi*x/sig)*(x*xi > 0)
     
-    return((1/sig)*t^(-1-1/xi)*exp(-t^(-1/xi)))}
+  return((1/sig)*t^(-1-1/xi)*exp(-t^(-1/xi)))}
 }
 
 GEV_nll_known_mu <- function(x,par) {
@@ -28,15 +28,14 @@ GEV_nll_known_mu <- function(x,par) {
   
   t <- xi*x/sig
   
-  if (sig <= 10e-3){l <- 10^6}
+  if (sig <= 1e-3) return(1e6)
   
-  if (xi > 0 & min(t) <= 0){l <- 10^6}
+  if (abs(xi) <= 1e-3) return(1e6)
   
-  if (xi < 0 & min(t) >= 0){l <- 10^6}
+  if (min(t) <= 1e-3) return(1e6)
   
-  else{l <- -sum(log(GEV_density_known_mu(x,par)))}
+  else{return(-sum(log(GEV_density_known_mu(x,par))))}
   
-  l
 }
 
 GEV_density_known_mu_fixed_xi <- function(x,par) {
@@ -49,22 +48,16 @@ GEV_density_known_mu_fixed_xi <- function(x,par) {
   
   gamma <- -digamma(1)
   
-  if (xi > 10e-3){
-    
-    t <- x/(rho*exp((1-gamma)*xi))
-    
-    return((1/(rho*xi*exp((1-gamma)*xi)))*t^(-1-1/xi)*exp(-t^(-1/xi)))
-  }
+  if (abs(xi) <= 1e-3){return("xi must be non null")}
   
-  if (xi < -10e-3){
+  else {
     
-    t <- -x/(rho*exp((1-gamma)*xi))
+    t <- x / (sign(xi) * rho * exp((1 - gamma) * xi))*(x*xi >  0)
     
-    return((-1/(rho*xi*exp((1-gamma)*xi)))*t^(-1-1/xi)*exp(-t^(-1/xi)))
+    return((1/(rho*abs(xi)*exp((1-gamma)*xi)))*t^(-1-1/xi)*exp(-t^(-1/xi)))
   }
-  
-  if (abs(xi) <= 10e-3){return("xi must be non null")}
 }
+
 
 GEV_nll_known_mu_fixed_xi <- function(x,par) {
   
@@ -72,23 +65,20 @@ GEV_nll_known_mu_fixed_xi <- function(x,par) {
   
   gamma <- -digamma(1)
   
-  rho <- par[1] # scale parameter in the new parametrisation
+  rho <- par[1]
   
   xi <- par[2]
   
-  t <- sign(xi)*x/(rho*exp((1-gamma)*xi))
+  t <- x / (sign(xi) * rho * exp((1 - gamma) * xi))
   
-  if ((rho*exp((1-gamma)*xi)) <= 10e-3){l <- 10^6}
+  if ((rho*exp((1-gamma)*xi)) <= 1e-3) return(1e6)
   
-  if (xi > 0 & min(t) <= 0){l <- 10^6}
+  if (abs(xi) <= 1e-3) return(1e6)
   
-  if (xi < 0 & min(t) >= 0){l <- 10^6}
+  if (min(t) <= 1e-3) return(1e6)
   
-  if (abs(xi) <= 10e-3){l <- 10^6}
+  else{return(-sum(log(GEV_density_known_mu_fixed_xi(x,par))))}
   
-  else{l <- -sum(log(GEV_density_known_mu_fixed_xi(x,par)))}
-  
-  l
 }
 
 ### Score functions, i.e. partial first derivatives of the log-likelihood, of the classic two-parameter GEV distribution
@@ -97,7 +87,7 @@ score_sig_GEV  <- function(x,sig,xi) {
   
   # partial first derivative, according to the scale parameter, of the log-likelihood of the two-parameter GEV distibution
   
-  if (abs(xi) <= 10e-3){return("xi must be non null")}
+  if (abs(xi) <= 1e-3){return("xi must be non null")}
   
   else{
     t <- x*xi/sig
@@ -110,7 +100,7 @@ score_xi_GEV  <- function(x,sig,xi) {
   
   # partial first derivative, according to the shape parameter, of the log-likelihood of the two-parameter GEV distibution
   
-  if (abs(xi) <= 10e-3){return("xi must be non null")}
+  if (abs(xi) <= 1e-3){return("xi must be non null")}
   
   else{
     t <- x*xi/sig
@@ -125,7 +115,7 @@ IF_sig_GEV  <- function(x,sig,xi) {
   
   # partial second derivative, twice according to the scale parameter, of the log-likelihood of the GEV distibution
   
-  if (abs(xi) <= 10e-3){return("xi must be non null")}
+  if (abs(xi) <= 1e-3){return("xi must be non null")}
   
   else{
     t <- x*xi/sig
@@ -138,7 +128,7 @@ IF_xi_GEV  <- function(x,sig,xi) {
   
   # partial second derivative, twice according to the shape parameter, of the log-likelihood of the GEV distibution
   
-  if (abs(xi) <= 10e-3){return("xi must be non null")}
+  if (abs(xi) <= 1e-3){return("xi must be non null")}
   
   else{
     t <- x*xi/sig
@@ -151,7 +141,7 @@ IF_xi_sig_GEV  <- function(x,sig,xi) {
   
   # partial second derivative, once according to both parameters, of the log-likelihood of the GEV distibution
   
-  if (abs(xi) <= 10e-3){return("xi must be non null")}
+  if (abs(xi) <= 1e-3){return("xi must be non null")}
   
   else{
     
@@ -189,9 +179,6 @@ Fisher_xi_sig_GEV  <- function(sig,xi) {
 }
 
 
-
-
-
 ##### two-parameter GP distribution (mu = zero) ######
 
 
@@ -205,16 +192,16 @@ GPD_density <- function(x,par) {
   
   xi <- par[2]
   
-  if (abs(xi) <= 10e-3){return((1/sig)*exp(-x/sig))}
+  if (abs(xi) <= 1e-3){return((1/sig)*exp(-x/sig))}
   
-  if (xi > 10e-3){
+  if (xi > 1e-3){
     
     t <- (1+xi*x/sig)*(x > 0)
     
     return((1/sig)*t^(-1-1/xi))
   }
   
-  if (xi  < -10e-3){
+  if (xi  < -1e-3){
     
     t <- (1+xi*x/sig)*(x >= 0 & x <= -sig/xi)
     
@@ -230,14 +217,13 @@ GPD_nll <- function(x,par) {
   
   xi <- par[2]
   
+  if (sig <= 1e-3) return(1e6)
+  
   t <- 1 + xi*x/sig
   
-  if (min(t) <= 0){l <- 10^6}
-  
-  else{l <- -sum(log(GPD_density(x,par)))}
-  
-  l
-  
+  if (min(t) <= 1e-3) return(1e6)
+   
+  else{return(-sum(log(GPD_density(x,par))))}
 }
 
 GPD_density_fixed_xi <- function(x,par) {
@@ -248,19 +234,42 @@ GPD_density_fixed_xi <- function(x,par) {
   
   xi <- par[2]
   
-  if (rho <= 10e-4){return(10e9)}
+  if (abs(xi) <= 1e-3){return((1/rho)*exp(-x/rho))}
   
-  if (abs(xi) <= 10e-3){return((1/rho)*exp(-x/rho))}
-  
-  else{
+  if (xi > 1e-3){
     
-    t <- (1+xi*(xi+1)*x/rho)
+    t <- (1+xi*(xi+1)*x/rho)*(x > 0)
     
     return(((xi+1)/rho)*t^(-1-1/xi))
   }
+  
+  if (xi  < -1e-3){
+    
+    t <- (1+xi*(xi+1)*x/rho)*(x >= 0 & x < -rho/(xi*(xi+1)))
+    
+    return(((xi+1)/rho)*t^(-1-1/xi))
+    
+  }
 }
 
-GPD_nll_fixed_xi <- function(x,par) {
+GPD_nll_fixed_xi <- function(x, par) {
+  
+  rho <- par[1]
+  
+  xi  <- par[2]
+  
+  if (rho <= 1e-3) return(1e6)
+  
+  if (xi <= -1 + 1e-3) return(1e6)
+  
+  t <- 1 + xi*(xi+1)*x/rho
+  
+  if (min(t) <= 1e-3) return(1e6)
+  
+  return(-sum(log(GPD_density_fixed_xi(x,par))))
+}
+
+GPD_nll_fixed_xi1 <- function(x,par) {
   
   # negative log-likelihood of the reparametrised, with fixed shape parameter, two-parameter GP distribution
   
@@ -268,13 +277,16 @@ GPD_nll_fixed_xi <- function(x,par) {
   
   xi <- par[2]
   
+  if (rho <= 1e-3) return(1e6)
+  
+  if (xi <= -1 + 1e-3) return(1e6)
+  
   t <- 1+xi*(xi+1)*x/rho
   
-  if (min(t) <= 0){l <- 10^6}
+  if (min(t) <= 1e-3) return(1e6)
   
-  else{l <- -sum(log(GPD_density_fixed_xi(x,par)))}
-  
-  l
+  else{return(-sum(log(GPD_density_fixed_xi(x,par))))}
+
 }
 
 GPD_density_fixed_sig <- function(x,par) {
@@ -285,16 +297,22 @@ GPD_density_fixed_sig <- function(x,par) {
   
   zeta <- par[2] # shape parameter in the reparametrised settings
   
-  if (sig <= 10e-4){return(10e9)}
+  if (abs(zeta-log(sig)/2) <= 1e-3){return((1/sig)*exp(-x/sig))}
   
-  if (abs(zeta-log(sig)/2) <= 10e-3){return((1/sig)*exp(-x/sig))}
-  
-  else{
+  if (zeta-log(sig)/2 > 1e-3){
     
-    t <- (1+(zeta-log(sig)/2)*x/sig)
+    t <- (1+(zeta-log(sig)/2)*x/sig)*(x > 0)
     
     return((1/sig)*t^(-1-1/(zeta-log(sig)/2)))
   }
+  
+  if (zeta-log(sig)/2  < -1e-3){
+    
+    t <- (1+(zeta-log(sig)/2)*x/sig)*(x >= 0 & x <= -sig/(zeta-log(sig)/2))
+    
+    return((1/sig)*t^(-1-1/(zeta-log(sig)/2)))
+  }
+  
 }
 
 GPD_nll_fixed_sig <- function(x,par) {
@@ -304,17 +322,17 @@ GPD_nll_fixed_sig <- function(x,par) {
   
   zeta <- par[2]
   
-  y <- 1+(zeta-log(sig)/2)*x/sig
+  if (sig <= 1e-3) return(1e6)
   
-  if (min(y) <= 0){l <- 10^6}
+  t <- 1+(zeta-log(sig)/2)*x/sig
+  
+  if (min(t) <= 1e-3) return(1e6)
   
   else{return(-sum(log(GPD_density_fixed_sig(x,par))))}
+
 }
 
-
-
 ### Score functions of the classic two-parameter GPD distribution
-
 
 score_sig_GPD  <- function(x,sig,xi) {
   
